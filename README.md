@@ -22,42 +22,47 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v2-end`
+## You are at `v3-start`
 
-One file, one command:
+**Three repos now**, each with its own compose file, its own project name, and —
+this is the point — its own network:
+
+| | | |
+|---|---|---|
+| `main/Shop.Catalog` | `catalog-api` :5101 + `catalog-worker` | SQL, RabbitMQ |
+| `main/Shop.Orders` | `orders-api` :5102 + `orders-worker` | SQL, RabbitMQ |
+| `main/Shop.Storefront` | `storefront-web` :5173 | calls both APIs from the browser |
+
+Start all three — three commands, three terminals:
 
 ```sh
-cd main/Shop.Catalog
-docker compose -f docker/compose.yaml up
+docker compose -f main/Shop.Catalog/docker/compose.yaml up
+docker compose -f main/Shop.Orders/docker/compose.yaml up
+docker compose -f main/Shop.Storefront/docker/compose.yaml up
 ```
 
-Compose builds both images, creates the network, starts SQL Server and RabbitMQ,
-**waits for SQL to pass a healthcheck**, then starts the API and worker. Hot
-reload still works, now for both .NET services at once.
+Everything comes up. Nothing can talk to anything else, in **two different
+ways**:
 
-- <http://localhost:5101/products> — the API
-- <http://localhost:15672> — RabbitMQ management (shop / shop)
-
-SQL Server publishes no port at all: the API reaches it across the network
-Compose made, and nothing on your machine needs to.
-
-```
-tilt-series/
-└── main/
-    └── Shop.Catalog/
-        ├── docker/
-        │   ├── compose.yaml              ← everything, in one file
-        │   ├── .env                      ← the SA password, written once
-        │   ├── catalog-api.dev.Dockerfile
-        │   └── catalog-worker.dev.Dockerfile
-        └── src/
+```sh
+# api -> api, server-side, over Docker's network
+curl http://localhost:5102/catalog-check
+# {"reached":"http://catalog-api:5101","ok":false,"error":"Name or service not known"}
 ```
 
-The details — the project name, why service names resolve, `${SA_PASSWORD}`
-substitution, and what `depends_on` does and doesn't promise — are in
-[`main/Shop.Catalog/README.md`](main/Shop.Catalog/README.md).
+```
+# browser -> api, from http://localhost:5173
+Could not reach catalog-api at http://catalog-api:5101 — Failed to fetch
+```
 
-**Prerequisites at this tag:** Docker, and ~4 GB of free RAM for SQL Server.
+Same error text, completely different causes. One is Docker DNS being per
+network; the other is your browser not being on a Docker network at all. Video 3
+is about telling them apart and fixing each properly.
+
+A dev CORS policy already ships in both APIs, so that isn't what's failing here.
+
+**Prerequisites at this tag:** Docker, and ~8 GB of free RAM — there are two SQL
+Servers now, one per repo. Nothing is shared until Video 8.
 
 ---
 
