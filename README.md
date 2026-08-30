@@ -22,44 +22,32 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v1-end`
+## You are at `v1.2-start`
 
-`main/Shop.Catalog` now carries a **dev image**: the .NET SDK, your `src`
-folder mounted into it, and `dotnet watch` recompiling on every save. Nothing
-about the API changed — what changed is that it no longer needs a .NET SDK on
-your machine.
+`main/Shop.Storefront` has arrived: a Vite + React app on :5173 showing a
+static product list. It calls no API — that happens in video 3.
 
 ```sh
-cd main/Shop.Catalog
-docker build -t shop-catalog-api:dev -f docker/catalog-api.dev.Dockerfile .
-
-docker run --rm -it -p 5101:5101 --name shop-catalog-api \
-  -v "$PWD/src:/src" \
-  shop-catalog-api:dev
-
-curl http://localhost:5101/
+cd main/Shop.Storefront/src
+npm install
+npm run dev
+# http://localhost:5173
 ```
 
-Now edit `src/Shop.Catalog.Api/Program.cs`, change the string on `/`, save, and
-curl again — new response, no rebuild. The container is compiling your editor's
-output.
-
-Only your source is mounted. The image sets `ArtifactsPath=/artifacts`, so the
-container compiles to a path inside itself and never writes `obj/` or `bin/`
-into your tree — `main/Shop.Catalog/README.md` has the long version.
+Catalog hasn't moved since `v1-end`. The storefront is deliberately in the state
+Catalog was in at `v1-start` — running straight on your machine, because your
+machine happens to have the right Node.
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
-    └── Shop.Catalog/
-        ├── .dockerignore
-        ├── docker/catalog-api.dev.Dockerfile
+    ├── Shop.Catalog/           ← already containerized (v1-end)
+    └── Shop.Storefront/        ← new, not containerized yet
         └── src/
 ```
 
-**Prerequisites at this tag:** Docker. The .NET SDK is now optional — it lives
-in the image.
+**Prerequisites at this tag:** Node, plus Docker if you want to run Catalog.
 
 ---
 
