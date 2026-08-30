@@ -22,47 +22,50 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v3-start`
+## You are at `v3-end`
 
-**Three repos now**, each with its own compose file, its own project name, and —
-this is the point — its own network:
-
-| | | |
-|---|---|---|
-| `main/Shop.Catalog` | `catalog-api` :5101 + `catalog-worker` | SQL, RabbitMQ |
-| `main/Shop.Orders` | `orders-api` :5102 + `orders-worker` | SQL, RabbitMQ |
-| `main/Shop.Storefront` | `storefront-web` :5173 | calls both APIs from the browser |
-
-Start all three — three commands, three terminals:
+Three repos, three compose projects — and now one **shared external network**
+that two of them join.
 
 ```sh
+docker network create shopnet    # once, outside any project
+
 docker compose -f main/Shop.Catalog/docker/compose.yaml up
 docker compose -f main/Shop.Orders/docker/compose.yaml up
 docker compose -f main/Shop.Storefront/docker/compose.yaml up
 ```
 
-Everything comes up. Nothing can talk to anything else, in **two different
-ways**:
+- <http://localhost:5173> — the storefront, now able to reach both APIs
+- <http://localhost:5101/products> · <http://localhost:5102/orders>
+- <http://localhost:15672> — RabbitMQ (shop / shop)
 
-```sh
-# api -> api, server-side, over Docker's network
-curl http://localhost:5102/catalog-check
-# {"reached":"http://catalog-api:5101","ok":false,"error":"Name or service not known"}
-```
+`shopnet` is created by hand and declared `external: true`, so Compose won't
+create it for you. Forget it and `up` says so:
 
 ```
-# browser -> api, from http://localhost:5173
-Could not reach catalog-api at http://catalog-api:5101 — Failed to fetch
+network shopnet declared as external, but could not be found
 ```
 
-Same error text, completely different causes. One is Docker DNS being per
-network; the other is your browser not being on a Docker network at all. Video 3
-is about telling them apart and fixing each properly.
+### The two failures had two different fixes
 
-A dev CORS policy already ships in both APIs, so that isn't what's failing here.
+**api → api** was Docker DNS being per network. `catalog-api` and `orders-api`
+both join `shopnet` and resolve each other by service name. They stay on their
+own project networks too — the `networks:` list has to include `default`, or
+each container loses its own SQL Server and RabbitMQ.
 
-**Prerequisites at this tag:** Docker, and ~8 GB of free RAM — there are two SQL
-Servers now, one per repo. Nothing is shared until Video 8.
+**browser → api** was never a Docker problem. `Shop.Storefront` does not join
+`shopnet` and has no reason to: its `fetch` calls run on your machine, so they
+use `http://localhost:5101` and the published ports. A dev CORS policy in both
+APIs keeps the browser from blocking the cross-origin calls; Video 5 removes the
+need for it.
+
+### Three terminals
+
+Which is the problem. Three repos means three `docker compose up`, three log
+streams, and no single place that tells you what is actually running.
+
+**Prerequisites at this tag:** Docker, ~8 GB of free RAM (two SQL Servers, one
+per repo — nothing is shared until Video 8), and the `shopnet` network.
 
 ---
 
