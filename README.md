@@ -22,47 +22,42 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v2-start`
+## You are at `v2-end`
 
-`main/Shop.Catalog` is **two** services now — `Shop.Catalog.Api` and
-`Shop.Catalog.Worker` — and between them they need SQL Server and RabbitMQ.
-Adding a product saves a row and publishes a `ProductCreated` event; the worker
-handles it.
-
-The Docker side hasn't moved since `v1-end`, and that's the problem. Video 1's
-`docker run` still starts the API, but the API now needs a database and a broker
-that aren't there, so it never serves a request. Starting Catalog by hand means
-a network and four containers, in an order that matters:
+One file, one command:
 
 ```sh
-docker network create shop-net
-docker run -d --name sqlserver      --network shop-net ...
-docker run -d --name rabbitmq       --network shop-net ...
-docker run -d --name catalog-api    --network shop-net ...
-docker run -d --name catalog-worker --network shop-net ...
+cd main/Shop.Catalog
+docker compose -f docker/compose.yaml up
 ```
 
-The network comes first because Docker's **default bridge has no DNS** — without
-a user-defined network, `sqlserver` resolves to nothing. Full commands, with
-every flag, are in
-[`main/Shop.Catalog/README.md`](main/Shop.Catalog/README.md).
+Compose builds both images, creates the network, starts SQL Server and RabbitMQ,
+**waits for SQL to pass a healthcheck**, then starts the API and worker. Hot
+reload still works, now for both .NET services at once.
+
+- <http://localhost:5101/products> — the API
+- <http://localhost:15672> — RabbitMQ management (shop / shop)
+
+SQL Server publishes no port at all: the API reaches it across the network
+Compose made, and nothing on your machine needs to.
 
 ```
 tilt-series/
-├── bootstrap.sh
 └── main/
     └── Shop.Catalog/
         ├── docker/
+        │   ├── compose.yaml              ← everything, in one file
+        │   ├── .env                      ← the SA password, written once
         │   ├── catalog-api.dev.Dockerfile
         │   └── catalog-worker.dev.Dockerfile
         └── src/
-            ├── Shop.Catalog.Api/
-            ├── Shop.Catalog.Contracts/     ← the message both sides share
-            └── Shop.Catalog.Worker/
 ```
 
-**Prerequisites at this tag:** Docker, and ~4 GB of free RAM — SQL Server is the
-greedy one.
+The details — the project name, why service names resolve, `${SA_PASSWORD}`
+substitution, and what `depends_on` does and doesn't promise — are in
+[`main/Shop.Catalog/README.md`](main/Shop.Catalog/README.md).
+
+**Prerequisites at this tag:** Docker, and ~4 GB of free RAM for SQL Server.
 
 ---
 
