@@ -22,48 +22,47 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v1.2-end`
+## You are at `v2-start`
 
-Both apps now run in dev containers with hot reload — the .NET one and the
-React one.
+`main/Shop.Catalog` is **two** services now — `Shop.Catalog.Api` and
+`Shop.Catalog.Worker` — and between them they need SQL Server and RabbitMQ.
+Adding a product saves a row and publishes a `ProductCreated` event; the worker
+handles it.
+
+The Docker side hasn't moved since `v1-end`, and that's the problem. Video 1's
+`docker run` still starts the API, but the API now needs a database and a broker
+that aren't there, so it never serves a request. Starting Catalog by hand means
+a network and four containers, in an order that matters:
 
 ```sh
-cd main/Shop.Storefront
-docker build -t shop-storefront-web:dev -f docker/storefront-web.dev.Dockerfile .
-
-docker run --rm -it -p 5173:5173 --name shop-storefront-web \
-  -v "$PWD/src/src:/app/src" \
-  shop-storefront-web:dev
-
-# http://localhost:5173
+docker network create shop-net
+docker run -d --name sqlserver      --network shop-net ...
+docker run -d --name rabbitmq       --network shop-net ...
+docker run -d --name catalog-api    --network shop-net ...
+docker run -d --name catalog-worker --network shop-net ...
 ```
 
-Edit `src/src/App.jsx`, save, and the browser updates without a reload.
-
-Two traps are specific to this side, and both fail **silently**:
-
-- **Vite binds loopback.** Inside a container that means the container itself,
-  so the published port forwards to nothing and the page never loads.
-  `server.host: true` / `--host` fixes it.
-- **`node_modules` through the bind mount.** Mounting your whole app folder
-  over `/app` hides the image's install, and a host `node_modules` carries
-  binaries built for the wrong platform. The usual patch — a second
-  `-v /app/node_modules` — leaves an empty root-owned folder in your working
-  tree on a fresh clone. Mounting `src/src` alone avoids both.
+The network comes first because Docker's **default bridge has no DNS** — without
+a user-defined network, `sqlserver` resolves to nothing. Full commands, with
+every flag, are in
+[`main/Shop.Catalog/README.md`](main/Shop.Catalog/README.md).
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
-    ├── Shop.Catalog/
-    │   └── docker/catalog-api.dev.Dockerfile
-    └── Shop.Storefront/
-        ├── .dockerignore
-        └── docker/storefront-web.dev.Dockerfile
+    └── Shop.Catalog/
+        ├── docker/
+        │   ├── catalog-api.dev.Dockerfile
+        │   └── catalog-worker.dev.Dockerfile
+        └── src/
+            ├── Shop.Catalog.Api/
+            ├── Shop.Catalog.Contracts/     ← the message both sides share
+            └── Shop.Catalog.Worker/
 ```
 
-**Prerequisites at this tag:** Docker. Node and the .NET SDK are both optional
-now — they live in the images.
+**Prerequisites at this tag:** Docker, and ~4 GB of free RAM — SQL Server is the
+greedy one.
 
 ---
 
