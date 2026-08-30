@@ -22,32 +22,48 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v1.2-start`
+## You are at `v1.2-end`
 
-`main/Shop.Storefront` has arrived: a Vite + React app on :5173 showing a
-static product list. It calls no API — that happens in video 3.
+Both apps now run in dev containers with hot reload — the .NET one and the
+React one.
 
 ```sh
-cd main/Shop.Storefront/src
-npm install
-npm run dev
+cd main/Shop.Storefront
+docker build -t shop-storefront-web:dev -f docker/storefront-web.dev.Dockerfile .
+
+docker run --rm -it -p 5173:5173 --name shop-storefront-web \
+  -v "$PWD/src/src:/app/src" \
+  shop-storefront-web:dev
+
 # http://localhost:5173
 ```
 
-Catalog hasn't moved since `v1-end`. The storefront is deliberately in the state
-Catalog was in at `v1-start` — running straight on your machine, because your
-machine happens to have the right Node.
+Edit `src/src/App.jsx`, save, and the browser updates without a reload.
+
+Two traps are specific to this side, and both fail **silently**:
+
+- **Vite binds loopback.** Inside a container that means the container itself,
+  so the published port forwards to nothing and the page never loads.
+  `server.host: true` / `--host` fixes it.
+- **`node_modules` through the bind mount.** Mounting your whole app folder
+  over `/app` hides the image's install, and a host `node_modules` carries
+  binaries built for the wrong platform. The usual patch — a second
+  `-v /app/node_modules` — leaves an empty root-owned folder in your working
+  tree on a fresh clone. Mounting `src/src` alone avoids both.
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
-    ├── Shop.Catalog/           ← already containerized (v1-end)
-    └── Shop.Storefront/        ← new, not containerized yet
-        └── src/
+    ├── Shop.Catalog/
+    │   └── docker/catalog-api.dev.Dockerfile
+    └── Shop.Storefront/
+        ├── .dockerignore
+        └── docker/storefront-web.dev.Dockerfile
 ```
 
-**Prerequisites at this tag:** Node, plus Docker if you want to run Catalog.
+**Prerequisites at this tag:** Docker. Node and the .NET SDK are both optional
+now — they live in the images.
 
 ---
 
