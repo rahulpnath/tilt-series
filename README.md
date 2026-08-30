@@ -16,37 +16,50 @@ cd tilt-series
 `bootstrap.sh` puts this repo on the tag and clones each app repo at the same
 tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
+A tag isn't a branch, so every repo lands *detached* at it — which is what you
+want for reading along. If you start making changes you'd like to keep, give
+them a branch: `git checkout -b my-changes`.
+
 ---
 
-## You are at `v1-start`
+## You are at `v1-end`
 
-One repo, and **no Docker anywhere**. `main/Shop.Catalog` is a .NET 10 minimal
-API that runs the way every .NET app you have ever cloned runs:
+`main/Shop.Catalog` now carries a **dev image**: the .NET SDK, your `src`
+folder mounted into it, and `dotnet watch` recompiling on every save. Nothing
+about the API changed — what changed is that it no longer needs a .NET SDK on
+your machine.
 
 ```sh
-cd main/Shop.Catalog/src
-dotnet run --project Shop.Catalog.Api
+cd main/Shop.Catalog
+docker build -t shop-catalog-api:dev -f docker/catalog-api.dev.Dockerfile .
 
-# in another terminal
+docker run --rm -it -p 5101:5101 --name shop-catalog-api \
+  -v "$PWD/src:/src" \
+  shop-catalog-api:dev
+
 curl http://localhost:5101/
-curl http://localhost:5101/products
 ```
 
-Which works — provided your machine happens to have the .NET 10 SDK on it.
-That's the problem Video 1 starts from.
+Now edit `src/Shop.Catalog.Api/Program.cs`, change the string on `/`, save, and
+curl again — new response, no rebuild. The container is compiling your editor's
+output.
+
+Only your source is mounted. The image sets `ArtifactsPath=/artifacts`, so the
+container compiles to a path inside itself and never writes `obj/` or `bin/`
+into your tree — `main/Shop.Catalog/README.md` has the long version.
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
-    └── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
+    └── Shop.Catalog/
+        ├── .dockerignore
+        ├── docker/catalog-api.dev.Dockerfile
         └── src/
-            ├── Shop.Catalog.slnx
-            └── Shop.Catalog.Api/
 ```
 
-**Prerequisites at this tag:** the [.NET 10 SDK](https://dotnet.microsoft.com/download).
-Docker arrives at `v1-end`.
+**Prerequisites at this tag:** Docker. The .NET SDK is now optional — it lives
+in the image.
 
 ---
 
