@@ -1,8 +1,8 @@
 # Local Dev from First Principles — Docker, Tilt & Caddy
 
-The workspace repo for the series. It holds the shared pieces (a Tiltfile and
-Caddy arrive in later videos) and a `main/` folder holding a clone of each app
-repo.
+The workspace repo for the series. It holds the shared pieces — a `Tiltfile`
+from Video 4, Caddy from Video 5 — and a `main/` folder holding a clone of each
+app repo.
 
 Every video has a **`vN-start` and a `vN-end` tag**, and the same tag exists in
 this repo *and* in every app repo. So you can start from any video:
@@ -22,41 +22,86 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v4-start`
+## You are at `v4-end`
 
-A fourth repo. `Shop.Admin` is a second Vite app on **5174**, in its own compose
-project, reading both APIs and writing to neither. Nothing else changed — the
-other three repos are byte-for-byte what they were at `v3-end`.
+One command, from here:
 
 ```sh
-docker network create shopnet    # once, outside any project
-
-docker compose -f main/Shop.Catalog/docker/compose.yaml up
-docker compose -f main/Shop.Orders/docker/compose.yaml up
-docker compose -f main/Shop.Storefront/docker/compose.yaml up
-docker compose -f main/Shop.Admin/docker/compose.yaml up
+docker network create shopnet    # still once, outside any project
+tilt up
 ```
 
-- <http://localhost:5173> — the storefront
-- <http://localhost:5174> — the admin app
+Ten resources in one UI at <http://localhost:10350>, grouped by repo, each with
+its own log stream, its own status and its own restart button. The four
+`docker compose up` commands are gone; **the four `compose.yaml` files are not
+touched.**
+
+- <http://localhost:5173> — the storefront · <http://localhost:5174> — the admin app
 - <http://localhost:5101/products> · <http://localhost:5102/orders>
 - <http://localhost:15672> — RabbitMQ (shop / shop)
 
-### Four terminals
+### What is actually here
 
-Which is the problem this tag exists to show. Four `docker compose up` commands,
-in an order that matters because `shopnet` has to exist first, producing **ten
-containers** across four log streams — and no single place that says what is
-running.
+```
+tilt-series/
+├── Tiltfile              ← includes each repo's Tiltfile
+├── tilt/shared.Tiltfile  ← where a repo lives
+└── main/
+    ├── Shop.Catalog/Tiltfile
+    ├── Shop.Orders/Tiltfile
+    ├── Shop.Storefront/Tiltfile
+    └── Shop.Admin/Tiltfile
+```
 
-Kill one container and nothing tells you. The first thing you see is a fetch
-failing in the browser, and then you go hunting through four terminals for which
-of the ten it was.
+Each repo's `Tiltfile` is the primitive: `cd main/Shop.Catalog && tilt up` runs
+that repo on its own, and has to keep working — Video 6 builds worktrees on
+exactly that. The workspace file is a loop over four `include()` calls.
 
-That hunt is what Video 4 replaces.
+`repo_dir()` prefers a checkout **beside this file** over the one in `main/`, so
+a folder that carries its own copy of a repo runs that copy. Every group gets a
+full stack from whatever subset it has.
 
-**Prerequisites at this tag:** Docker, ~8 GB of free RAM (two SQL Servers, one
-per API repo — nothing is shared until Video 8), and the `shopnet` network.
+> Copy this `Tiltfile` if you want it somewhere else — don't symlink it. Tilt
+> resolves paths against the symlink's target, so it goes looking for repos next
+> to the original.
+
+### Why no compose file had to change
+
+`include()` gives each Tiltfile its own working directory — the repo's — so
+`docker/compose.yaml` and `context: ..` mean what you'd expect. And each repo
+passes its own `project_name`, so Tilt runs **four separate compose projects**,
+each with its own `--project-directory`:
+
+```
+shop              catalog-api  catalog-worker  catalog-sqlserver  catalog-rabbitmq
+shop-orders       orders-api   orders-worker   orders-sqlserver   orders-rabbitmq
+shop-storefront   storefront-web
+shop-admin        admin-web
+```
+
+Two traps live in that list, and neither one errors loudly:
+
+- **`project_name` is not optional.** Tilt does not read the `name:` key inside
+  `compose.yaml`. Omit the argument and every included file collapses into one
+  project named after the first repo's folder, resolving that repo's relative
+  paths for all of them.
+- **Resource names are global.** Catalog and Orders both have a `sqlserver` and
+  a `rabbitmq`. Whichever loads second stops with `dc_resource named
+  "rabbitmq" already exists` — hence `new_name=` in both repos' Tiltfiles.
+
+### Now you can see it
+
+Grouping ten containers in one place makes the duplication obvious for the first
+time: **two SQL Servers and two RabbitMQs**, one per API repo. That's real, it's
+the cost of one-repo-one-compose-file, and Video 8 is where it gets fixed.
+
+`tilt down` stops everything and leaves the named volumes alone — `sql-data`
+survives, exactly as `docker compose down` without `-v` would.
+
+**Prerequisites at this tag:** Docker, [Tilt](https://docs.tilt.dev/install.html),
+~8 GB of free RAM, and the `shopnet` network. Forget the network and Tilt shows
+you the compose error in the failing resource's log:
+`network shopnet declared as external, but could not be found`.
 
 ---
 
