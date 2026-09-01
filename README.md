@@ -22,10 +22,11 @@ them a branch: `git checkout -b my-changes`.
 
 ---
 
-## You are at `v3-end`
+## You are at `v4-start`
 
-Three repos, three compose projects — and now one **shared external network**
-that two of them join.
+A fourth repo. `Shop.Admin` is a second Vite app on **5174**, in its own compose
+project, reading both APIs and writing to neither. Nothing else changed — the
+other three repos are byte-for-byte what they were at `v3-end`.
 
 ```sh
 docker network create shopnet    # once, outside any project
@@ -33,39 +34,29 @@ docker network create shopnet    # once, outside any project
 docker compose -f main/Shop.Catalog/docker/compose.yaml up
 docker compose -f main/Shop.Orders/docker/compose.yaml up
 docker compose -f main/Shop.Storefront/docker/compose.yaml up
+docker compose -f main/Shop.Admin/docker/compose.yaml up
 ```
 
-- <http://localhost:5173> — the storefront, now able to reach both APIs
+- <http://localhost:5173> — the storefront
+- <http://localhost:5174> — the admin app
 - <http://localhost:5101/products> · <http://localhost:5102/orders>
 - <http://localhost:15672> — RabbitMQ (shop / shop)
 
-`shopnet` is created by hand and declared `external: true`, so Compose won't
-create it for you. Forget it and `up` says so:
+### Four terminals
 
-```
-network shopnet declared as external, but could not be found
-```
+Which is the problem this tag exists to show. Four `docker compose up` commands,
+in an order that matters because `shopnet` has to exist first, producing **ten
+containers** across four log streams — and no single place that says what is
+running.
 
-### The two failures had two different fixes
+Kill one container and nothing tells you. The first thing you see is a fetch
+failing in the browser, and then you go hunting through four terminals for which
+of the ten it was.
 
-**api → api** was Docker DNS being per network. `catalog-api` and `orders-api`
-both join `shopnet` and resolve each other by service name. They stay on their
-own project networks too — the `networks:` list has to include `default`, or
-each container loses its own SQL Server and RabbitMQ.
-
-**browser → api** was never a Docker problem. `Shop.Storefront` does not join
-`shopnet` and has no reason to: its `fetch` calls run on your machine, so they
-use `http://localhost:5101` and the published ports. A dev CORS policy in both
-APIs keeps the browser from blocking the cross-origin calls; Video 5 removes the
-need for it.
-
-### Three terminals
-
-Which is the problem. Three repos means three `docker compose up`, three log
-streams, and no single place that tells you what is actually running.
+That hunt is what Video 4 replaces.
 
 **Prerequisites at this tag:** Docker, ~8 GB of free RAM (two SQL Servers, one
-per repo — nothing is shared until Video 8), and the `shopnet` network.
+per API repo — nothing is shared until Video 8), and the `shopnet` network.
 
 ---
 
