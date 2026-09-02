@@ -1,0 +1,8 @@
+# The workspace root holds checkouts, not code — so ignore everything and
+# un-ignore the few files this repo actually tracks. That way `main/` and every
+# worktree folder you add later (feature-pricing/, bugfix-42/, ...) stay ignored
+# whatever you decide to call them.
+/*
+!/.gitignore
+!/README.md
+!/bootstrap.sh
