@@ -18,35 +18,42 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v1-start`
+## You are at `v1-end`
 
-One repo, and **no Docker anywhere**. `main/Shop.Catalog` is a .NET 10 minimal
-API that runs the way every .NET app you have ever cloned runs:
+`main/Shop.Catalog` now has a **Dockerfile**. It's the same .NET 10 minimal API
+as at `v1-start`, except it no longer needs the .NET SDK on your machine — only
+Docker:
 
 ```sh
-cd main/Shop.Catalog/src
-dotnet run --project Shop.Catalog.Api
+cd main/Shop.Catalog
+docker build -f catalog-api.Dockerfile -t catalog-api .
+docker run -d -p 5101:8080 catalog-api
 
 # in another terminal
-curl http://localhost:5101/
 curl http://localhost:5101/products
 ```
 
-Which works — provided your machine happens to have the .NET 10 SDK on it.
-That's the problem Video 1 starts from.
+It's a multi-stage build: `sdk:10.0` compiles the app, `aspnet:10.0` runs it,
+and the SDK never ships. 340 MB instead of 1.25 GB.
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
     └── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
+        ├── catalog-api.Dockerfile
+        ├── .dockerignore
         └── src/
             ├── Shop.Catalog.slnx
             └── Shop.Catalog.Api/
 ```
 
-**Prerequisites at this tag:** the [.NET 10 SDK](https://dotnet.microsoft.com/download).
-Docker arrives at `v1-end`.
+**Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/).
+The .NET SDK is optional from here — that's the whole point of the tag.
+
+No bind mount and no `dotnet watch` yet: this image carries no SDK, so a code
+change means building the image again. `v1.2-end` adds a dev image that fixes
+that.
 
 ---
 
