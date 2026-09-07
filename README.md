@@ -18,30 +18,33 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v1-end`
+## You are at `v1.2-end`
 
-`main/Shop.Catalog` now has a **Dockerfile**. It's the same .NET 10 minimal API
-as at `v1-start`, except it no longer needs the .NET SDK on your machine — only
-Docker:
+`main/Shop.Catalog` now has a **second Dockerfile, for development**. The one
+from `v1-end` builds the image you'd ship; this one runs the app from source
+with your working folder mounted in, so an edit shows up without a rebuild:
 
 ```sh
 cd main/Shop.Catalog
-docker build -f catalog-api.Dockerfile -t catalog-api .
-docker run -d -p 5101:8080 catalog-api
+docker build -f catalog-api.dev.Dockerfile -t catalog-api:dev .
+docker run --rm -it -p 5101:5101 --name catalog-api \
+  -v "$PWD/src:/src" \
+  catalog-api:dev
 
 # in another terminal
-curl http://localhost:5101/products
+curl http://localhost:5101/
 ```
 
-It's a multi-stage build: `sdk:10.0` compiles the app, `aspnet:10.0` runs it,
-and the SDK never ships. 340 MB instead of 1.25 GB.
+Edit `src/Shop.Catalog.Api/Program.cs` and curl again — `dotnet watch`, running
+inside the container, rebuilds and restarts the app on its own.
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
     └── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
-        ├── catalog-api.Dockerfile
+        ├── catalog-api.Dockerfile        # to ship:    aspnet:10.0, 340 MB
+        ├── catalog-api.dev.Dockerfile    # to develop: sdk:10.0 + watch
         ├── .dockerignore
         └── src/
             ├── Shop.Catalog.slnx
@@ -49,11 +52,10 @@ tilt-series/
 ```
 
 **Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/).
-The .NET SDK is optional from here — that's the whole point of the tag.
+Still no .NET SDK — it's in the image now.
 
-No bind mount and no `dotnet watch` yet: this image carries no SDK, so a code
-change means building the image again. `v1.2-end` adds a dev image that fixes
-that.
+That `docker run` is already long, and there's only one container so far. Video
+2 replaces it with Compose.
 
 ---
 
