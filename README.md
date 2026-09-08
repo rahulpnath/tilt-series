@@ -18,42 +18,49 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v1.3-start`
+## You are at `v2-start`
 
-`main/Shop.Storefront` arrives — **storefront-web**, a Vite + React app listing the shop's
-products. It has no Docker config yet; that is what video 1.3 builds.
+`main/Shop.Catalog` grew the dependencies it deliberately didn't have before. The API
+writes to **SQL Server** and publishes a message with **Rebus**; a new
+**`Shop.Catalog.Worker`** subscribes to it. There is no Docker configuration for any of
+it yet — that is what video 2 builds.
+
+Four things have to be running, in order, before the app does anything:
 
 ```sh
-cd main/Shop.Storefront/src
-npm install
-npm run dev
+docker run -d --name sqlserver -p 1433:1433 \
+  -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='P@ssw0rd!Demo1' \
+  mcr.microsoft.com/mssql/server:2022-latest
+
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 \
+  -e RABBITMQ_DEFAULT_USER=shop -e RABBITMQ_DEFAULT_PASS=shop \
+  rabbitmq:3-management
+
+cd main/Shop.Catalog
+dotnet run --project src/Shop.Catalog.Worker
+dotnet run --project src/Shop.Catalog.Api
 ```
 
-Then open http://localhost:5173. It needs **Node 24** on your machine — which is the point
-1.3 opens on.
-
-`main/Shop.Catalog` is unchanged from `v1.2-end`; it carries this tag so `bootstrap.sh`
-still clones it here.
+`main/Shop.Storefront` is **skipped at this tag** — video 1.3 introduces it, and it
+publishes after this one. `bootstrap.sh` says so and carries on.
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
-    ├── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
-    │   ├── catalog-api.Dockerfile        # to ship:    aspnet:10.0, 340 MB
-    │   ├── catalog-api.dev.Dockerfile    # to develop: sdk:10.0 + watch
-    │   ├── .dockerignore
-    │   └── src/
-    └── Shop.Storefront/         ← github.com/rahulpnath/tilt-series-storefront
-        └── src/                          # Vite + React, no Docker yet
-            ├── package.json
-            ├── vite.config.js
-            └── src/
+    └── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
+        ├── catalog-api.Dockerfile        # to ship:    aspnet:10.0, 340 MB
+        ├── catalog-api.dev.Dockerfile    # to develop: sdk:10.0 + watch
+        ├── .dockerignore
+        └── src/
+            ├── Shop.Catalog.Api/         # + EF Core, + Rebus publish
+            ├── Shop.Catalog.Contracts/   # the ProductCreated message
+            └── Shop.Catalog.Worker/      # subscribes and logs
 ```
 
 **Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/)
-for Catalog, and [Node 24](https://nodejs.org/) for the Storefront. By the end of 1.3 the
-Storefront needs Docker only.
+and the [.NET 10 SDK](https://dotnet.microsoft.com/download). SQL Server and RabbitMQ run
+as containers; nothing else is installed on your machine.
 
 ---
 
