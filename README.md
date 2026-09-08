@@ -18,44 +18,42 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v1.2-end`
+## You are at `v1.3-start`
 
-`main/Shop.Catalog` now has a **second Dockerfile, for development**. The one
-from `v1-end` builds the image you'd ship; this one runs the app from source
-with your working folder mounted in, so an edit shows up without a rebuild:
+`main/Shop.Storefront` arrives — **storefront-web**, a Vite + React app listing the shop's
+products. It has no Docker config yet; that is what video 1.3 builds.
 
 ```sh
-cd main/Shop.Catalog
-docker build -f catalog-api.dev.Dockerfile -t catalog-api:dev .
-docker run --rm -it -p 5101:5101 --name catalog-api \
-  -v "$PWD/src:/src" \
-  catalog-api:dev
-
-# in another terminal
-curl http://localhost:5101/
+cd main/Shop.Storefront/src
+npm install
+npm run dev
 ```
 
-Edit `src/Shop.Catalog.Api/Program.cs` and curl again — `dotnet watch`, running
-inside the container, rebuilds and restarts the app on its own.
+Then open http://localhost:5173. It needs **Node 24** on your machine — which is the point
+1.3 opens on.
+
+`main/Shop.Catalog` is unchanged from `v1.2-end`; it carries this tag so `bootstrap.sh`
+still clones it here.
 
 ```
 tilt-series/
 ├── bootstrap.sh
 └── main/
-    └── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
-        ├── catalog-api.Dockerfile        # to ship:    aspnet:10.0, 340 MB
-        ├── catalog-api.dev.Dockerfile    # to develop: sdk:10.0 + watch
-        ├── .dockerignore
-        └── src/
-            ├── Shop.Catalog.slnx
-            └── Shop.Catalog.Api/
+    ├── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
+    │   ├── catalog-api.Dockerfile        # to ship:    aspnet:10.0, 340 MB
+    │   ├── catalog-api.dev.Dockerfile    # to develop: sdk:10.0 + watch
+    │   ├── .dockerignore
+    │   └── src/
+    └── Shop.Storefront/         ← github.com/rahulpnath/tilt-series-storefront
+        └── src/                          # Vite + React, no Docker yet
+            ├── package.json
+            ├── vite.config.js
+            └── src/
 ```
 
-**Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/).
-Still no .NET SDK — it's in the image now.
-
-That `docker run` is already long, and there's only one container so far. Video
-2 replaces it with Compose.
+**Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/)
+for Catalog, and [Node 24](https://nodejs.org/) for the Storefront. By the end of 1.3 the
+Storefront needs Docker only.
 
 ---
 
