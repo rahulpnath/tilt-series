@@ -18,39 +18,59 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v2-end`
+## You are at `v3-start`
 
-`main/Shop.Catalog` has a **`compose.yaml`** describing all four of its containers — SQL
-Server, RabbitMQ, the API and the worker. The runbook of `docker run` commands is gone.
+Three projects now, and the infrastructure is shared. **`infra/`** holds SQL Server and
+RabbitMQ in a compose project of their own (`shop-infra`), on a network named **`shopnet`**.
+`main/Shop.Catalog` and the new **`main/Shop.Orders`** join that network and reach both by
+name — neither carries its own copy any more. `main/Shop.Storefront` has its compose file
+and calls both APIs from the browser.
+
+Three `.env` files (not committed), then infra first:
 
 ```sh
-cd main/Shop.Catalog
-echo 'SA_PASSWORD=P@ssw0rd!Demo1' > .env    # not committed; Compose reads it
-docker compose up
+for d in infra main/Shop.Catalog main/Shop.Orders; do echo 'SA_PASSWORD=P@ssw0rd!Demo1' > $d/.env; done
+
+(cd infra                && docker compose up -d --wait)
+(cd main/Shop.Catalog    && docker compose up -d)
+(cd main/Shop.Orders     && docker compose up -d)
+(cd main/Shop.Storefront && docker compose up -d)
 ```
 
-`main/Shop.Storefront` is **skipped at this tag** — video 1.3 introduces it, and it
-publishes after this one. `bootstrap.sh` says so and carries on.
+Infra first — the app projects declare `shopnet` as `external`, so their `up` stops if it
+isn't there yet.
+
+Catalog works as it did at `v2-end`. Orders comes up too — but the moment it calls Catalog,
+the name doesn't resolve. That is what video 3 is about.
+
+```sh
+curl -X POST http://localhost:5102/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"productId":1,"quantity":2}'
+# System.Net.Http.HttpRequestException: Name or service not known (catalog-api:5101)
+```
 
 ```
 tilt-series/
 ├── bootstrap.sh
+├── infra/
+│   ├── compose.yaml             # shop-infra: sqlserver + rabbitmq, network `shopnet`
+│   └── .env                     # you create this; gitignored
 └── main/
-    └── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
-        ├── compose.yaml                  # the four containers, one file
-        ├── .env                          # you create this; gitignored
-        ├── catalog-api.dev.Dockerfile    # sdk:10.0 + watch
-        ├── catalog-worker.dev.Dockerfile # same, for the worker
-        ├── catalog-api.Dockerfile        # to ship: aspnet:10.0, 340 MB (unused here)
-        ├── .dockerignore
-        └── src/
-            ├── Shop.Catalog.Api/         # EF Core + Rebus publish
-            ├── Shop.Catalog.Contracts/   # the ProductCreated message
-            └── Shop.Catalog.Worker/      # subscribes and logs
+    ├── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog     :5101
+    │   ├── compose.yaml         # api + worker, on `default` and `shopnet`
+    │   └── .env
+    ├── Shop.Orders/             ← github.com/rahulpnath/tilt-series-orders      :5102
+    │   ├── compose.yaml         # same shape; calls Catalog at http://catalog-api:5101
+    │   └── .env
+    └── Shop.Storefront/         ← github.com/rahulpnath/tilt-series-storefront  :5173
+        └── compose.yaml         # web; calls both APIs from the browser
 ```
 
+`main/Shop.Admin` is **skipped at this tag** — video 4 introduces it.
+
 **Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/)
-only. The .NET SDK, SQL Server and RabbitMQ all run in containers.
+only. The .NET SDK, Node, SQL Server and RabbitMQ all run in containers.
 
 ---
 

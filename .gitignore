@@ -6,3 +6,6 @@
 !/.gitignore
 !/README.md
 !/bootstrap.sh
+# infra/ is tracked; its .env is not — Compose reads the SQL password from it.
+!/infra/
+/infra/.env
