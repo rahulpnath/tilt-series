@@ -18,27 +18,15 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v2-start`
+## You are at `v2-end`
 
-`main/Shop.Catalog` grew the dependencies it deliberately didn't have before. The API
-writes to **SQL Server** and publishes a message with **Rebus**; a new
-**`Shop.Catalog.Worker`** subscribes to it. There is no Docker configuration for any of
-it yet — that is what video 2 builds.
-
-Four things have to be running, in order, before the app does anything:
+`main/Shop.Catalog` has a **`compose.yaml`** describing all four of its containers — SQL
+Server, RabbitMQ, the API and the worker. The runbook of `docker run` commands is gone.
 
 ```sh
-docker run -d --name sqlserver -p 1433:1433 \
-  -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='P@ssw0rd!Demo1' \
-  mcr.microsoft.com/mssql/server:2022-latest
-
-docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 \
-  -e RABBITMQ_DEFAULT_USER=shop -e RABBITMQ_DEFAULT_PASS=shop \
-  rabbitmq:3-management
-
 cd main/Shop.Catalog
-dotnet run --project src/Shop.Catalog.Worker
-dotnet run --project src/Shop.Catalog.Api
+echo 'SA_PASSWORD=P@ssw0rd!Demo1' > .env    # not committed; Compose reads it
+docker compose up
 ```
 
 `main/Shop.Storefront` is **skipped at this tag** — video 1.3 introduces it, and it
@@ -49,18 +37,20 @@ tilt-series/
 ├── bootstrap.sh
 └── main/
     └── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog
-        ├── catalog-api.Dockerfile        # to ship:    aspnet:10.0, 340 MB
-        ├── catalog-api.dev.Dockerfile    # to develop: sdk:10.0 + watch
+        ├── compose.yaml                  # the four containers, one file
+        ├── .env                          # you create this; gitignored
+        ├── catalog-api.dev.Dockerfile    # sdk:10.0 + watch
+        ├── catalog-worker.dev.Dockerfile # same, for the worker
+        ├── catalog-api.Dockerfile        # to ship: aspnet:10.0, 340 MB (unused here)
         ├── .dockerignore
         └── src/
-            ├── Shop.Catalog.Api/         # + EF Core, + Rebus publish
+            ├── Shop.Catalog.Api/         # EF Core + Rebus publish
             ├── Shop.Catalog.Contracts/   # the ProductCreated message
             └── Shop.Catalog.Worker/      # subscribes and logs
 ```
 
 **Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/)
-and the [.NET 10 SDK](https://dotnet.microsoft.com/download). SQL Server and RabbitMQ run
-as containers; nothing else is installed on your machine.
+only. The .NET SDK, SQL Server and RabbitMQ all run in containers.
 
 ---
 
