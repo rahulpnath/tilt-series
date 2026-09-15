@@ -18,13 +18,13 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v3-start`
+## You are at `v3-end`
 
-Three projects now, and the infrastructure is shared. **`infra/`** holds SQL Server and
-RabbitMQ in a compose project of their own (`shop-infra`), on a network named **`shopnet`**.
-`main/Shop.Catalog` and the new **`main/Shop.Orders`** join that network and reach both by
-name — neither carries its own copy any more. `main/Shop.Storefront` has its compose file
-and calls both APIs from the browser.
+Three projects, shared infrastructure, and now the call between the apps works. **`infra/`**
+holds SQL Server and RabbitMQ in a compose project of their own (`shop-infra`), on a network
+named **`shopnet`**. `main/Shop.Catalog` and `main/Shop.Orders` join that network; on it,
+Catalog's API answers to the alias **`catalog-api`** and Orders' to **`orders-api`**. Both
+APIs carry a dev-only CORS policy so `main/Shop.Storefront` can call them from the browser.
 
 Three `.env` files (not committed), then infra first:
 
@@ -40,15 +40,18 @@ for d in infra main/Shop.Catalog main/Shop.Orders; do echo 'SA_PASSWORD=P@ssw0rd
 Infra first — the app projects declare `shopnet` as `external`, so their `up` stops if it
 isn't there yet.
 
-Catalog works as it did at `v2-end`. Orders comes up too — but the moment it calls Catalog,
-the name doesn't resolve. That is what video 3 is about.
-
 ```sh
+curl -X POST http://localhost:5101/products \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Pour Over Kettle","price":119.00}'
+
 curl -X POST http://localhost:5102/orders \
   -H 'Content-Type: application/json' \
   -d '{"productId":1,"quantity":2}'
-# System.Net.Http.HttpRequestException: Name or service not known (catalog-api:5101)
+# {"id":1,"productId":1,"productName":"Pour Over Kettle","unitPrice":119.00,"quantity":2}
 ```
+
+Then http://localhost:5173 — the Storefront lists the products and places orders.
 
 ```
 tilt-series/
@@ -58,10 +61,10 @@ tilt-series/
 │   └── .env                     # you create this; gitignored
 └── main/
     ├── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog     :5101
-    │   ├── compose.yaml         # api + worker, on `default` and `shopnet`
+    │   ├── compose.yaml         # api + worker on `default` and `shopnet`; alias `catalog-api`
     │   └── .env
     ├── Shop.Orders/             ← github.com/rahulpnath/tilt-series-orders      :5102
-    │   ├── compose.yaml         # same shape; calls Catalog at http://catalog-api:5101
+    │   ├── compose.yaml         # same shape; alias `orders-api`; calls http://catalog-api:5101
     │   └── .env
     └── Shop.Storefront/         ← github.com/rahulpnath/tilt-series-storefront  :5173
         └── compose.yaml         # web; calls both APIs from the browser
