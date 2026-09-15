@@ -18,15 +18,15 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v3-end`
+## You are at `v4-start`
 
-Three projects, shared infrastructure, and now the call between the apps works. **`infra/`**
-holds SQL Server and RabbitMQ in a compose project of their own (`shop-infra`), on a network
-named **`shopnet`**. `main/Shop.Catalog` and `main/Shop.Orders` join that network; on it,
-Catalog's API answers to the alias **`catalog-api`** and Orders' to **`orders-api`**. Both
-APIs carry a dev-only CORS policy so `main/Shop.Storefront` can call them from the browser.
+Four app repos now. **`main/Shop.Admin`** has arrived — a second React app, on `:5174`, that
+adds products and lists products and orders. Everything else is as `v3-end` left it: **`infra/`**
+holds SQL Server and RabbitMQ (`shop-infra`, network **`shopnet`**), Catalog and Orders join
+that network with their aliases, both APIs carry a dev CORS policy, and the Storefront calls
+them from the browser.
 
-Three `.env` files (not committed), then infra first:
+Three `.env` files (not committed), then infra first, then the four apps:
 
 ```sh
 for d in infra main/Shop.Catalog main/Shop.Orders; do echo 'SA_PASSWORD=P@ssw0rd!Demo1' > $d/.env; done
@@ -35,23 +35,16 @@ for d in infra main/Shop.Catalog main/Shop.Orders; do echo 'SA_PASSWORD=P@ssw0rd
 (cd main/Shop.Catalog    && docker compose up -d)
 (cd main/Shop.Orders     && docker compose up -d)
 (cd main/Shop.Storefront && docker compose up -d)
+(cd main/Shop.Admin      && docker compose up -d)
 ```
 
-Infra first — the app projects declare `shopnet` as `external`, so their `up` stops if it
-isn't there yet.
+Five `up`s, in five folders, in that order — and Docker Desktop to see what's running. That
+is the state video 4 opens on.
 
-```sh
-curl -X POST http://localhost:5101/products \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Pour Over Kettle","price":119.00}'
-
-curl -X POST http://localhost:5102/orders \
-  -H 'Content-Type: application/json' \
-  -d '{"productId":1,"quantity":2}'
-# {"id":1,"productId":1,"productName":"Pour Over Kettle","unitPrice":119.00,"quantity":2}
-```
-
-Then http://localhost:5173 — the Storefront lists the products and places orders.
+- http://localhost:5174 — Admin: add a product, see the orders
+- http://localhost:5173 — the Storefront: list products, place an order
+- http://localhost:5101/products · http://localhost:5102/orders — the APIs
+- http://localhost:15672 — RabbitMQ (`shop` / `shop`)
 
 ```
 tilt-series/
@@ -66,11 +59,11 @@ tilt-series/
     ├── Shop.Orders/             ← github.com/rahulpnath/tilt-series-orders      :5102
     │   ├── compose.yaml         # same shape; alias `orders-api`; calls http://catalog-api:5101
     │   └── .env
-    └── Shop.Storefront/         ← github.com/rahulpnath/tilt-series-storefront  :5173
-        └── compose.yaml         # web; calls both APIs from the browser
+    ├── Shop.Storefront/         ← github.com/rahulpnath/tilt-series-storefront  :5173
+    │   └── compose.yaml         # web; calls both APIs from the browser
+    └── Shop.Admin/              ← github.com/rahulpnath/tilt-series-admin       :5174
+        └── compose.yaml         # web; adds products, lists products and orders
 ```
-
-`main/Shop.Admin` is **skipped at this tag** — video 4 introduces it.
 
 **Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/)
 only. The .NET SDK, Node, SQL Server and RabbitMQ all run in containers.
