@@ -18,9 +18,10 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v4-end`
+## You are at `v5-start`
 
-One command, from here:
+The same tree as `v4-end` — video 5 starts here: one `tilt up`, and four apps on four
+`localhost` ports, over plain HTTP. One command, from here:
 
 ```sh
 for d in infra main/Shop.Catalog main/Shop.Orders; do echo 'SA_PASSWORD=P@ssw0rd!Demo1' > $d/.env; done
