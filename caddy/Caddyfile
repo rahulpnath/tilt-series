@@ -1,0 +1,15 @@
+catalog.localhost {
+	reverse_proxy catalog-api:5101
+}
+
+orders.localhost {
+	reverse_proxy orders-api:5102
+}
+
+storefront.localhost {
+	reverse_proxy storefront-web:5173
+}
+
+admin.localhost {
+	reverse_proxy admin-web:5174
+}

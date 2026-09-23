@@ -1,0 +1,21 @@
+name: shop-caddy
+
+services:
+  caddy:
+    image: caddy:2
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile --watch
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+# Caddy's only network is the shared one; it has nothing of its own.
+networks:
+  default:
+    name: shopnet
+    external: true
+
+volumes:
+  caddy-data:
