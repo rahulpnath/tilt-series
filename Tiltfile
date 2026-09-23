@@ -11,5 +11,6 @@ docker_compose('caddy/compose.yaml', project_name='shop-caddy')
 dc_resource('caddy', labels=['caddy'])
 
 # Everything on shopnet needs infra up first — it owns the network.
-for app in ['catalog-api', 'catalog-worker', 'orders-api', 'orders-worker', 'caddy']:
+for app in ['catalog-api', 'catalog-worker', 'orders-api', 'orders-worker',
+            'storefront-web', 'admin-web', 'caddy']:
     dc_resource(app, resource_deps=['sqlserver', 'rabbitmq'])

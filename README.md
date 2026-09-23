@@ -18,10 +18,9 @@ tag into `main/`. Repos the series hasn't introduced yet are skipped.
 
 ---
 
-## You are at `v5-start`
+## You are at `v5-end`
 
-The same tree as `v4-end` — video 5 starts here: one `tilt up`, and four apps on four
-`localhost` ports, over plain HTTP. One command, from here:
+One command, from here:
 
 ```sh
 for d in infra main/Shop.Catalog main/Shop.Orders; do echo 'SA_PASSWORD=P@ssw0rd!Demo1' > $d/.env; done
@@ -29,65 +28,82 @@ for d in infra main/Shop.Catalog main/Shop.Orders; do echo 'SA_PASSWORD=P@ssw0rd
 tilt up
 ```
 
-Eight resources in one UI at http://localhost:10350 — grouped by repo, each with its own
-status, its own log and a link to it. Infra starts first, then the four apps. The five
-`docker compose up` commands are gone; **the five `compose.yaml` files are not touched.**
+Ten resources in one UI at http://localhost:10350. Every app now sits behind **Caddy** — one
+more container, in `caddy/`, and the only thing publishing a port for the apps (80 and 443).
+Each app has a name, over HTTPS:
 
-- http://localhost:5174 — Admin · http://localhost:5173 — the Storefront
-- http://localhost:5101/products · http://localhost:5102/orders — the APIs
-- http://localhost:15672 — RabbitMQ (`shop` / `shop`)
+- https://storefront.localhost — the Storefront · https://admin.localhost — Admin
+- https://catalog.localhost/products · https://orders.localhost/orders — the APIs
+- http://localhost:15672 — RabbitMQ (`shop` / `shop`) · SQL Server on `localhost,1433`
 
-`tilt down` stops everything. It is `docker compose down` for every project, without `-v`,
-so the database volume stays. Compose takes the projects down in no fixed order, so
-`shopnet` is sometimes left behind with `Resource is still in use` — harmless; the next `up`
-reuses it.
+`*.localhost` names reach your own machine in every browser, and in `curl`, with no hosts
+entry. The first time, the browser warns: Caddy signs these with a certificate authority of its
+own. Trust it once — next section — and the warning is gone for every name it serves.
+
+### Trust Caddy's root certificate (once)
+
+```sh
+cd caddy
+docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./root.crt
+```
+
+The root lives in the `caddy-data` volume, so it survives `tilt down` / `tilt up`; remove the
+volume and Caddy makes a new one, which you trust again.
+
+- **Windows** — double-click `root.crt` → *Install Certificate* → *Current User* → *Place all
+  certificates in the following store* → *Trusted Root Certification Authorities*, or
+  `certutil -user -addstore Root root.crt`. Chrome and Edge read this store. From WSL2 the file
+  is at `\\wsl.localhost\<distro>\home\…\caddy\root.crt`.
+- **macOS** — `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain root.crt`
+- **Linux** — `sudo cp root.crt /usr/local/share/ca-certificates/caddy-local.crt && sudo update-ca-certificates`;
+  Chrome on Linux keeps its own store: `certutil -d sql:$HOME/.pki/nssdb -A -t C -n caddy-local -i root.crt`
+- **Firefox** keeps its own store on every OS — set `security.enterprise_roots.enabled` to `true`
+  in `about:config` and it uses the system's.
+
+Skip this and the page warning can be clicked past, but the Storefront's `fetch` calls to the
+APIs fail silently — there is no click-through for a `fetch`.
 
 ### What is here
 
 ```
 tilt-series/
-├── Tiltfile                     # includes each repo's Tiltfile; infra; the start order
+├── Tiltfile                     # includes each repo's Tiltfile; infra; caddy; the start order
 ├── bootstrap.sh
 ├── infra/
 │   ├── compose.yaml             # shop-infra: sqlserver + rabbitmq, network `shopnet`
 │   └── .env                     # you create this; gitignored
+├── caddy/
+│   ├── compose.yaml             # shop-caddy: caddy:2 on 80 + 443, on `shopnet`
+│   ├── Caddyfile                # one block per name → the container's alias and port
+│   └── root.crt                 # exported by you; gitignored
 └── main/
-    ├── Shop.Catalog/Tiltfile    ← github.com/rahulpnath/tilt-series-catalog     :5101
-    ├── Shop.Orders/Tiltfile     ← github.com/rahulpnath/tilt-series-orders      :5102
-    ├── Shop.Storefront/Tiltfile ← github.com/rahulpnath/tilt-series-storefront  :5173
-    └── Shop.Admin/Tiltfile      ← github.com/rahulpnath/tilt-series-admin       :5174
+    ├── Shop.Catalog/            ← github.com/rahulpnath/tilt-series-catalog     catalog.localhost
+    ├── Shop.Orders/             ← github.com/rahulpnath/tilt-series-orders      orders.localhost
+    ├── Shop.Storefront/         ← github.com/rahulpnath/tilt-series-storefront  storefront.localhost
+    └── Shop.Admin/              ← github.com/rahulpnath/tilt-series-admin       admin.localhost
 ```
 
-Each repo's `Tiltfile` is the primitive: `cd main/Shop.Catalog && tilt up` runs that repo on
-its own (with infra already up). The workspace file `include()`s the four, adds `infra/` as
-one more `docker_compose()`, and declares the order:
+### What changed, and why
 
-```python
-for app in ['catalog-api', 'catalog-worker', 'orders-api', 'orders-worker']:
-    dc_resource(app, resource_deps=['sqlserver', 'rabbitmq'])
-```
+- **`caddy/compose.yaml`** — one service from the official image. It publishes 80 and 443, mounts
+  the Caddyfile read-only, and keeps its certificates in a volume. Its `default` network *is*
+  `shopnet` (declared `external`, infra owns it): Caddy has nothing private to talk to, so it
+  needs no network of its own. `--watch` on the command makes Caddy reload the Caddyfile on save.
+- **`caddy/Caddyfile`** — four blocks, one per name, each a `reverse_proxy` to that app's alias
+  and port on `shopnet`. No `tls` line: Caddy treats `.localhost` names as local and signs them
+  with its internal authority by itself, and it redirects `http://` to `https://` on its own.
+- **Storefront and Admin join `shopnet`** with the aliases `storefront-web` and `admin-web` —
+  Caddy reaches them by name, and `web` alone would collide on the shared network. Their API
+  addresses become `https://catalog.localhost` and `https://orders.localhost`.
+- **The apps' published ports are gone** — 5101, 5102, 5173, 5174. Nothing outside Docker needs
+  them: the browser goes through Caddy, and containers always went by name. Tilt's links came
+  from those ports, so each repo's `Tiltfile` now carries `links=` instead.
+- **The workspace `Tiltfile`** adds Caddy as one more `docker_compose()`, and the `resource_deps`
+  loop now covers everything on `shopnet`, Caddy and the two React apps included.
+- **CORS stays** in both APIs. The pages and the APIs are different origins — `storefront.localhost`
+  and `catalog.localhost` — exactly as they will be when deployed.
 
-`resource_deps` orders the starts, and `wait=True` on infra is video 3's `--wait`: Tilt's
-`docker compose up` for infra doesn't finish until both health checks pass, so the .NET apps
-start against a database and a broker that are ready.
-
-### Why no compose file had to change
-
-`include()` runs each repo's Tiltfile in that repo's folder, so `compose.yaml` and `./src`
-mean what they always did. And each repo passes its own `project_name`, so Tilt runs five
-separate compose projects. Two things to know:
-
-- **`project_name` is not optional.** Tilt does not read the `name:` key in `compose.yaml`.
-  Leave the argument out and Tilt names the project after the folder — `shoporders` — and
-  starts a second set of containers next to the first.
-- **Resource names are global.** Catalog and Orders both have a service called `api`, and
-  the Storefront and Admin both have `web`. The second one loaded stops with
-  `Error in docker_compose: dc_resource named "api" already exists` — hence `new_name=` in
-  every repo's Tiltfile. The service name in the compose file, and the container name, are
-  unchanged.
-
-Tilt watches the Tiltfiles, the compose files and the Dockerfiles. It does not watch your
-source — the bind mounts and `dotnet watch` / Vite still do the reloading, exactly as before.
+`tilt down` stops everything without `-v`, so the database and Caddy's certificates stay.
 
 **Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/) and
 [Tilt](https://docs.tilt.dev/install.html).
@@ -100,7 +116,7 @@ source — the bind mounts and `dotnet watch` / Vite still do the reloading, exa
 2. **Compose** — one file instead of a runbook of `docker run` commands
 3. **Names & networking** — how one container finds another, and why `localhost` lies
 4. **Tilt** — one control tower over four repos' compose files
-5. **Caddy** — one HTTPS front door, and the end of CORS
+5. **Caddy** — one HTTPS front door, a name per app
 6. **Many worktrees at once** — a full stack per branch, running side by side
 7. **Dev tooling** — worktrunk, herdr and hunk, once doing it by hand hurts
 8. **Optimizations & gotchas** — share what's shareable, and when not to
