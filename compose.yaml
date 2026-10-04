@@ -2,8 +2,8 @@ name: shop
 
 # One project for the whole system; each repo keeps its own paths and .env.
 include:
-  - main/Shop.Catalog/compose.yaml
-  - main/Shop.Orders/compose.yaml
-  - main/Shop.Storefront/compose.yaml
-  - main/Shop.Admin/compose.yaml
+  - ${CATALOG_DIR:-main/Shop.Catalog}/compose.yaml
+  - ${ORDERS_DIR:-main/Shop.Orders}/compose.yaml
+  - ${STOREFRONT_DIR:-main/Shop.Storefront}/compose.yaml
+  - ${ADMIN_DIR:-main/Shop.Admin}/compose.yaml
   - infra/compose.yaml

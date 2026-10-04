@@ -1,15 +1,30 @@
-catalog.localhost {
-	reverse_proxy catalog-api:5101
-}
+*.localhost {
+	# A certificate per address, made on first visit; browsers reject a *.localhost wildcard.
+	tls internal {
+		on_demand
+	}
 
-orders.localhost {
-	reverse_proxy orders-api:5102
-}
+	@storefront header_regexp folder Host ^storefront-(.+)\.localhost$
+	handle @storefront {
+		reverse_proxy storefront-web-{re.folder.1}:5173
+	}
 
-storefront.localhost {
-	reverse_proxy storefront-web:5173
-}
+	@catalog header_regexp folder Host ^catalog-(.+)\.localhost$
+	handle @catalog {
+		reverse_proxy catalog-api-{re.folder.1}:5101
+	}
 
-admin.localhost {
-	reverse_proxy admin-web:5174
+	@orders header_regexp folder Host ^orders-(.+)\.localhost$
+	handle @orders {
+		reverse_proxy orders-api-{re.folder.1}:5102
+	}
+
+	@admin header_regexp folder Host ^admin-(.+)\.localhost$
+	handle @admin {
+		reverse_proxy admin-web-{re.folder.1}:5174
+	}
+
+	handle {
+		respond "Nothing running at {host}" 404
+	}
 }

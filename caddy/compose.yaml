@@ -3,6 +3,8 @@ name: shop-caddy
 services:
   caddy:
     image: caddy:2
+    # Started once on its own, shared by every folder; Docker brings it back on restart.
+    restart: unless-stopped
     command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile --watch
     ports:
       - "80:80"
