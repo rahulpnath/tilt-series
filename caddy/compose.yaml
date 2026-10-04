@@ -11,11 +11,10 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
 
-# Caddy's only network is the shared one; it has nothing of its own.
+# Caddy owns shopnet; the apps join it to be reached.
 networks:
   default:
     name: shopnet
-    external: true
 
 volumes:
   caddy-data:
