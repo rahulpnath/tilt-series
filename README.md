@@ -1,20 +1,53 @@
 # Local Dev from First Principles — Docker, Tilt & Caddy
 
-The workspace repo for the series. It holds the shared pieces — `infra/`, the
-`Tiltfile`, Caddy from video 5 — and a `main/` folder holding a clone of each app
-repo.
+The code for the **[Docker Series on YouTube](https://bit.ly/docker-series)**. This workspace
+repo holds the shared pieces — `infra/`, the `Tiltfile`, Caddy — and a `main/` folder holding a
+clone of each app repo.
 
-Every video has a **`vN-start` and a `vN-end` tag**, and the same tag exists in
-this repo *and* in every app repo. So you can start from any video:
+Every video that changes the code has a **start and an end tag**, and the same tag exists in this
+repo *and* in every app repo. Clone once:
 
 ```sh
 git clone https://github.com/rahulpnath/tilt-series
 cd tilt-series
-./bootstrap.sh v1-start
 ```
 
-`bootstrap.sh` puts this repo on the tag and clones each app repo at the same
-tag into `main/`. Repos the series hasn't introduced yet are skipped.
+then put everything on the tag for the video you're watching — the start tag to follow along, the
+end tag for the finished result. `bootstrap.sh` checks this repo out at the tag and clones each app
+repo at the same tag into `main/`; repos the series hasn't introduced yet are skipped. The
+README at each tag says what to run from there.
+
+## The videos
+
+1. **[Docker 101 — Everything You Need to Get Started](https://www.youtube.com/watch?v=22bkOL7fhiY)**
+   The concepts — images, containers, how Docker works. No code to pull.
+2. **[Your First Dockerfile — Containerize a .NET API](https://youtu.be/qdp8Pekjeu8)**
+   ```sh
+   ./bootstrap.sh v1-start    # follow along
+   ./bootstrap.sh v1-end      # finished
+   ```
+3. **[Hot Reload in a Docker Container — A Dev Dockerfile for .NET](https://youtu.be/qWDga_UOqFg)**
+   ```sh
+   ./bootstrap.sh v1.2-start
+   ./bootstrap.sh v1.2-end
+   ```
+4. **[Your First Docker Compose File — Run a Multi-Service .NET App](https://youtu.be/5ctaQBGGcyQ)**
+   ```sh
+   ./bootstrap.sh v2-start
+   ./bootstrap.sh v2-end
+   ```
+5. **[Docker Networking Explained — Connect Apps Across Compose Projects](https://youtu.be/P1rlVywY7Ic)**
+   ```sh
+   ./bootstrap.sh v3-start
+   ./bootstrap.sh v3-end
+   ```
+6. **[Git Worktrees Explained — Stop Stashing, Start Working in Parallel](https://youtu.be/AocVvPxPQeY)**
+   No tag — it works on any app repo as it is on `main`. The video uses Orders:
+   ```sh
+   git clone https://github.com/rahulpnath/tilt-series-orders Shop.Orders
+   ```
+
+More videos are on the way; their tags appear here as each one is published.
 
 ---
 
@@ -107,18 +140,3 @@ tilt-series/
 
 **Prerequisites at this tag:** [Docker](https://docs.docker.com/get-started/get-docker/) and
 [Tilt](https://docs.tilt.dev/install.html).
-
----
-
-## The series
-
-1. **Docker core & the dev container** — image vs container, a Dockerfile, bind-mounting your source, `dotnet watch`
-2. **Compose** — one file instead of a runbook of `docker run` commands
-3. **Names & networking** — how one container finds another, and why `localhost` lies
-4. **Tilt** — one control tower over four repos' compose files
-5. **Caddy** — one HTTPS front door, a name per app
-6. **Many worktrees at once** — a full stack per branch, running side by side
-7. **Dev tooling** — worktrunk, herdr and hunk, once doing it by hand hurts
-8. **Optimizations & gotchas** — share what's shareable, and when not to
-
-Each video's repo state is a tag: `v1-start`, `v1-end`, `v2-start`, … `v8-end`.
