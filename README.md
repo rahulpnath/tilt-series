@@ -46,6 +46,26 @@ README at each tag says what to run from there.
    ```sh
    git clone https://github.com/rahulpnath/tilt-series-orders Shop.Orders
    ```
+7. **[Tilt for Docker Compose — Run Every Repo with One Command](https://youtu.be/GkfX-Afw4Z8)**
+   ```sh
+   ./bootstrap.sh v4-start
+   ./bootstrap.sh v4-end
+   ```
+8. **[Caddy Reverse Proxy for Local Development — HTTPS and Pretty URLs](https://youtu.be/HUVx3lkyDpo)**
+   ```sh
+   ./bootstrap.sh v5-start
+   ./bootstrap.sh v5-end
+   ```
+9. **[Docker Compose Include — One Project for an App Across Many Repos](https://youtu.be/BCVo5LmVMBc)**
+   ```sh
+   ./bootstrap.sh v5.2-start
+   ./bootstrap.sh v5.2-end
+   ```
+10. **[Local Environments for AI Coding Agents — Run Multiple Copies of App Side by Side](https://youtu.be/qIUI2VYh5fU)**
+   ```sh
+   ./bootstrap.sh v6-start
+   ./bootstrap.sh v6-end
+   ```
 
 More videos are on the way; their tags appear here as each one is published.
 
